@@ -51,8 +51,8 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .iconbtn svg{width:20px;height:20px}
 main{flex:1;overflow-y:auto;padding:4px 16px 24px;-webkit-overflow-scrolling:touch}
 .view{display:flex;flex-direction:column;gap:18px}
-nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:var(--surface);padding:6px 4px calc(env(safe-area-inset-bottom) + 6px)}
-nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);text-decoration:none;font-size:11.5px;font-weight:600;border-radius:10px}
+nav.tabs{display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line);background:var(--surface);padding:6px 4px calc(env(safe-area-inset-bottom) + 6px)}
+nav.tabs a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);text-decoration:none;font-size:10.5px;font-weight:600;border-radius:10px}
 nav.tabs a svg{width:23px;height:23px}
 nav.tabs a[aria-current="page"]{color:var(--accent)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
@@ -140,6 +140,42 @@ a.link{color:var(--accent);font-weight:700;text-decoration:none}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .sync.on i{background:var(--calm)}
 .idea{white-space:pre-wrap;overflow-wrap:anywhere}
+.home-date{padding:2px 2px 0}
+.hd-day{font-family:var(--display);font-size:40px;font-weight:700;line-height:1.05;text-transform:capitalize;letter-spacing:-.02em}
+.hd-rest{font-size:18px;font-weight:600;color:var(--muted);margin-top:2px}
+.home-block{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;border-radius:22px;padding:28px 18px;min-height:34vh;text-decoration:none;font:inherit;border:0;width:100%}
+.home-block.ok{background:var(--calm-bg);color:var(--calm)}
+.home-block.crit{background:var(--crit-bg);color:var(--crit);align-items:stretch;justify-content:flex-start;text-align:left}
+.home-block.money{background:var(--accent);color:var(--accent-ink)}
+.home-block.money.neg{background:var(--crit);color:#fff}
+.hb-ico{width:64px;height:64px;border-radius:50%;background:var(--calm);color:#fff;display:grid;place-items:center}
+.hb-ico svg{width:34px;height:34px}
+.hb-big{font-family:var(--display);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.01em}
+.hb-sub{font-size:16px;font-weight:600;opacity:.85}
+.hb-money{font-family:var(--display);font-size:56px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.hb-list{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.hb-task{display:flex;align-items:center;gap:12px;background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px}
+.hb-task .check{width:30px;height:30px;border-color:var(--crit)}
+.hb-title{font-weight:700;font-size:18px;overflow-wrap:anywhere}
+.hb-when{font-size:14px;color:var(--crit);font-weight:600}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-decoration:none;color:var(--ink);min-height:104px;text-align:left;font:inherit}
+.tile svg{width:26px;height:26px;color:var(--accent);margin-bottom:4px}
+.t-label{font-weight:700;font-size:17px}
+.t-info{font-size:13.5px;color:var(--muted)}
+.tile:active{transform:scale(.98)}
+.hero{background:var(--accent);color:var(--accent-ink);border-radius:18px;padding:18px;display:flex;flex-direction:column}
+.hero .hero-label{font-weight:700;opacity:.85}
+.hero .hero-amount{font-family:var(--display);font-size:46px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.05;margin:4px 0 2px}
+.hero .hero-amount.neg{color:#ffd2cc}
+.hero .meta,.hero .muted{color:var(--accent-ink);opacity:.85}
+.hero .bar{background:rgba(255,255,255,.25)} .hero .bar i{background:var(--accent-ink)}
+.hero.st-bad .bar i{background:#ffd2cc}
+.hero .btn.ghost{background:rgba(255,255,255,.18);color:var(--accent-ink)}
+.hero .btn:not(.ghost){background:var(--accent-ink);color:var(--accent)}
+.tap{cursor:pointer;transition:transform .08s}
+.tap:active{transform:scale(.98)}
+.big-input{font-family:var(--display);font-size:28px;font-weight:700;min-height:60px}
 .iconbtn.mic{width:46px;height:46px;color:var(--accent)}
 .iconbtn.mic.on{background:var(--crit);border-color:var(--crit);color:#fff;animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 6px var(--crit-bg)}}
@@ -195,6 +231,7 @@ table.hist th:first-child{text-align:left}
 <script>
 /* ---------- icônes ---------- */
 const I = {
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
   today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>',
   agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>',
   money:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M6.5 15h4"/></svg>',
@@ -231,10 +268,14 @@ const ENVS = [
   {id:'bouffe', name:'Bouffe'},
   {id:'plaisir', name:'Plaisir'},
   {id:'essence', name:'Essence'},
+  {id:'necessite', name:'Nécessité'},
+  {id:'appartement', name:'Appartement Sainté', fixed:true},
+  {id:'credit', name:'Crédit', fixed:true},
+  {id:'famille', name:'Remboursement famille', fixed:true},
   {id:'investissement', name:'Investissement', invest:true},
   {id:'autre', name:'Autre'}
 ];
-const ENV_IDS = ['bouffe','plaisir','essence','investissement'];
+const ENV_IDS = ['bouffe','plaisir','essence','necessite','appartement','credit','famille','investissement'];
 function budgetOf(s, id){
   const b = s.budgets?.[id];
   if (typeof b === 'number') return {mode:'eur', value:b};
@@ -258,6 +299,10 @@ const DEFAULT_KEYWORDS = {
   bouffe:'courses, supermarche, carrefour, auchan, leclerc, lidl, aldi, intermarche, super u, monoprix, franprix, casino, boulangerie, pain, marche, boucherie, primeur, drive',
   plaisir:'restaurant, resto, mcdo, kebab, burger, pizza, sushi, uber eats, deliveroo, bar, biere, cafe, cine, cinema, concert, sortie, vetements, fringues, amazon, jeu, cadeau, netflix, spotify, livre, verre',
   essence:'essence, carburant, gasoil, gazole, diesel, plein, station, total, esso, shell, sp95, sp98, e10, e85',
+  necessite:'pharmacie, medecin, docteur, dentiste, ophtalmo, kine, mutuelle, sante, coiffeur, forfait, telephone, mobile, transport, bus, tram, train, sncf, parking, peage, garage, reparation, controle technique, assurance auto, pressing, frais bancaires',
+  appartement:'loyer, appart, appartement, sainte, saint-etienne, charges, edf, electricite, engie, gaz, eau, internet, box, fibre, assurance habitation, taxe fonciere, taxe habitation, meuble, travaux',
+  credit:'credit, pret, emprunt, mensualite, echeance',
+  famille:'remboursement, rembourse, famille, maman, papa, mere, pere, parents, frere, soeur, tonton, tata',
   investissement:'investissement, investi, placement, bourse, pea, cto, etf, action, actions, livret, livret a, epargne, crypto, bitcoin, assurance vie, per, scpi'
 };
 const RAYONS = {
@@ -305,9 +350,10 @@ function downloadFile(name, text, type){
 }
 
 /* ---------- état de l'interface ---------- */
-const ui = { tab:'aujourdhui', newDue: todayStr(), shopView:'catalogue', shopQuery:'', month: todayStr().slice(0,7), pendingExpense:null, showPast:false, showDone:false };
+const ui = { tab:'accueil', newDue: todayStr(), shopView:'catalogue', shopQuery:'', month: todayStr().slice(0,7), pendingExpense:null, showPast:false, showDone:false };
 const TABS = [
-  {id:'aujourdhui', label:'Aujourd\u2019hui', icon:'today'},
+  {id:'accueil', label:'Accueil', icon:'home'},
+  {id:'aujourdhui', label:'Tâches', icon:'today'},
   {id:'agenda', label:'Agenda', icon:'agenda'},
   {id:'depenses', label:'Dépenses', icon:'money'},
   {id:'courses', label:'Courses', icon:'cart'},
@@ -376,6 +422,31 @@ function viewToday(){
     html += `<div class="card"><button class="section-title" data-action="toggleDone" style="border:0;background:none;width:100%;padding:0;margin:0">Terminées (${done.length})<span>${ui.showDone ? 'Masquer' : 'Afficher'}</span></button>`;
     if (ui.showDone) html += `<div class="list" style="margin-top:8px">${done.slice(0,30).map(taskRow).join('')}</div>${done.length > 0 ? `<button class="btn ghost small" data-action="clearDone" style="margin-top:8px">Supprimer les tâches terminées</button>` : ''}`;
     html += `</div>`;
+  }
+  return html;
+}
+function moneyLeft(ym){
+  ym = ym || todayStr().slice(0,7);
+  const {items, targets} = monthStats(ym);
+  const out = items.reduce((a,i) => a + i.amount, 0);
+  const adjust = Number(get('exp-'+ym).adjust) || 0;
+  return {salary: targets.salary || 0, out, adjust, left: (targets.salary || 0) + adjust - out};
+}
+function viewHome(){
+  const tasks = get('tasks').items.filter(t => !t.done);
+  const crit = tasks.filter(t => levelOf(t) === 'crit').sort((a,b) => (a.due||'').localeCompare(b.due||'') || (a.time||'').localeCompare(b.time||''));
+  const m = moneyLeft();
+  let html = '';
+  if (!crit.length) {
+    html += `<a class="home-block ok" href="#aujourdhui"><div class="hb-ico">${I.tick}</div><div class="hb-big">Aucune tâche critique</div><div class="hb-sub">Tout est sous contrôle.</div></a>`;
+  } else {
+    html += `<div class="home-block crit"><div class="hb-big">${crit.length} tâche${crit.length>1?'s':''} critique${crit.length>1?'s':''}</div>
+      <div class="hb-list">${crit.map(t => `<div class="hb-task"><button class="check" data-action="toggleTask" data-id="${t.id}" aria-label="Marquer terminée">${I.tick}</button><div class="grow"><div class="hb-title">${esc(t.title)}</div><div class="hb-when">${esc(dueText(t))}</div></div></div>`).join('')}</div></div>`;
+  }
+  if (m.salary > 0 || m.adjust) {
+    html += `<a class="home-block money ${m.left < 0 ? 'neg' : ''}" href="#depenses"><div class="hb-sub">Il te reste</div><div class="hb-money">${eur(m.left)}</div><div class="hb-sub">ce mois-ci</div></a>`;
+  } else {
+    html += `<button class="home-block money" data-action="settings"><div class="hb-sub">Il te reste</div><div class="hb-big">Indique ton salaire</div><div class="hb-sub">dans les réglages pour voir ton reste</div></button>`;
   }
   return html;
 }
@@ -489,7 +560,7 @@ function addExpense(e){
 }
 function monthStats(ym){
   const items = get('exp-'+ym).items;
-  const spent = {bouffe:0, plaisir:0, essence:0, investissement:0, autre:0};
+  const spent = Object.fromEntries(ENVS.map(e => [e.id, 0]));
   items.forEach(i => spent[i.cat in spent ? i.cat : 'autre'] += i.amount);
   return {items, spent, targets: targetsForMonth(ym)};
 }
@@ -497,6 +568,7 @@ function envStatus(env, spent, target){
   if (!(target > 0)) return {cls:'st-warn', ok:null, diff:0};
   if (env.invest) { const diff = spent - target; return {cls: diff >= 0 ? 'st-ok' : spent/target >= .6 ? 'st-warn' : 'st-bad', ok: diff >= 0, diff}; }
   const diff = target - spent; const ratio = diff / target;
+  if (env.fixed) return {cls: diff < 0 ? 'st-bad' : 'st-ok', ok: diff >= 0, diff};
   return {cls: diff < 0 || ratio < .15 ? 'st-bad' : ratio < .4 ? 'st-warn' : 'st-ok', ok: diff >= 0, diff};
 }
 function goalChart(ym){
@@ -553,8 +625,25 @@ function viewExpenses(){
   const daysLeft = daysInMonth - now.getDate() + 1;
   const noBudget = !ENV_IDS.some(id => targets[id] > 0);
 
-  let html = `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
-    <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 100 PEA" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
+  const salary = targets.salary || 0;
+  const outTotal = items.reduce((a,i) => a + i.amount, 0);
+  const adjust = Number(get('exp-'+ym).adjust) || 0;
+  const left = salary + adjust - outTotal;
+  let html = '';
+  if (salary > 0 || adjust) {
+    const pctUsed = salary > 0 ? Math.round(outTotal / salary * 100) : 0;
+    html += `<div class="hero ${left < 0 ? 'st-bad' : pctUsed > 85 ? 'st-warn' : 'st-ok'}">
+      <div class="hero-label">Il te reste${isCurrent ? '' : ' (fin ' + esc(fmtMonth(ym).split(' ')[0]) + ')'}</div>
+      <div class="hero-amount ${left < 0 ? 'neg' : ''}">${eur(left)}</div>
+      ${salary > 0 ? `<div class="bar"><i style="width:${Math.min(100, pctUsed)}%"></i></div>` : ''}
+      <div class="meta"><span>Salaire ${eur0(salary)} − dépenses ${eur0(outTotal)}${adjust ? ` ${adjust > 0 ? '+' : '−'} correction ${eur0(Math.abs(adjust))}` : ''}</span>${salary > 0 ? `<span>${pctUsed} % utilisé</span>` : ''}</div>
+      <button class="btn ghost small" data-action="reconcile" style="align-self:flex-start;margin-top:10px">Comparer avec mon compte</button>
+    </div>`;
+  } else {
+    html += `<div class="hero st-warn"><div class="hero-label">Il te reste</div><div class="muted small">Indique ton salaire dans les réglages pour voir ici l\u2019argent qu\u2019il te reste ce mois-ci.</div><button class="btn small" data-action="settings" style="align-self:flex-start;margin-top:10px">Indiquer mon salaire</button></div>`;
+  }
+  html += `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 450 loyer" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
     <div class="hint">${I.mic}<span>${SR ? 'Touche le micro et dis ta dépense, par exemple « 25 euros resto ». Elle s’enregistre toute seule.' : 'Pour parler : touche le champ puis le micro du clavier, et dis ta dépense.'}</span></div>
   </form>`;
 
@@ -575,20 +664,7 @@ function viewExpenses(){
 
   if (noBudget) html += `<div class="card" style="display:flex;flex-direction:column;gap:10px"><b>Définis ton salaire et tes enveloppes</b><span class="muted small">Pour chaque enveloppe, choisis un montant fixe ou un pourcentage de ton salaire. Le reste à vivre et les objectifs se calculent tout seuls.</span><button class="btn" data-action="settings">Régler mes montants</button></div>`;
 
-  const salary = targets.salary || 0;
-  const outTotal = items.reduce((a,i) => a + i.amount, 0);
-  if (salary > 0) {
-    const restSal = salary - outTotal;
-    const pctUsed = Math.round(outTotal / salary * 100);
-    html += `<div class="envcard ${restSal < 0 ? 'st-bad' : pctUsed > 85 ? 'st-warn' : 'st-ok'}">
-      <div class="name">Salaire du mois</div>
-      <div class="big ${restSal < 0 ? 'neg' : ''}">${eur(restSal)}<span class="muted" style="font-size:15px;font-family:var(--body);font-weight:600"> restants</span></div>
-      <div class="bar"><i style="width:${Math.min(100, pctUsed)}%"></i></div>
-      <div class="meta"><span>${pctUsed} % utilisé · ${eur0(outTotal)} sur ${eur0(salary)}</span><span>dont ${eur0(spent.investissement)} investis</span></div>
-    </div>`;
-  }
-
-  html += `<div class="env">`;
+  html += `<div class="hint" style="margin-bottom:-6px">${I.today}<span>Touche une enveloppe pour y ajouter une dépense.</span></div><div class="env">`;
   for (const env of ENVS.filter(e => e.id !== 'autre')) {
     const b = targets[env.id] || 0;
     const v = spent[env.id];
@@ -598,7 +674,7 @@ function viewExpenses(){
     const refTxt = b > 0 ? (mode.mode === 'pct' && isCurrent ? `${mode.value} % du salaire = ${eur0(b)}` : `objectif ${eur0(b)}`) : 'pas d’objectif';
     if (env.invest) {
       const left = b - v;
-      html += `<div class="envcard ${st.cls}">
+      html += `<div class="envcard tap ${st.cls}" data-action="quickExp" data-cat="${env.id}" role="button" tabindex="0" aria-label="Ajouter une dépense en ${esc(env.name)}">
         <div class="name"><span class="dot" style="background:var(--st)"></span>Investissement</div>
         <div class="big">${b > 0 ? (left > 0 ? eur(left) : 'Atteint') : eur(v)}<span class="muted" style="font-size:15px;font-family:var(--body);font-weight:600">${b > 0 ? (left > 0 ? ' à investir' : ' · +' + eur0(-left)) : ' investis'}</span></div>
         <div class="bar"><i style="width:${b > 0 ? Math.min(100, pct) : 0}%"></i></div>
@@ -607,16 +683,16 @@ function viewExpenses(){
       continue;
     }
     const rest = b - v;
-    html += `<div class="envcard ${st.cls}">
-      <div class="name"><span class="dot" style="background:var(--st)"></span>Reste à vivre ${env.name.toLowerCase()}</div>
+    html += `<div class="envcard tap ${st.cls}" data-action="quickExp" data-cat="${env.id}" role="button" tabindex="0" aria-label="Ajouter une dépense en ${esc(env.name)}">
+      <div class="name"><span class="dot" style="background:var(--st)"></span>${env.fixed ? esc(env.name) + ' <span class="muted" style="font-weight:600">· reste</span>' : 'Reste à vivre ' + esc(env.name.toLowerCase())}</div>
       <div class="big ${rest < 0 ? 'neg' : ''}">${b > 0 ? eur(rest) : '—'}</div>
       <div class="bar"><i style="width:${b > 0 ? Math.min(100, pct) : 0}%"></i></div>
       <div class="meta"><span>${b > 0 ? `<b style="color:var(--ink)">${pct} % dépensé</b> · ` : ''}${eur0(v)}</span><span>${esc(refTxt)}</span></div>
-      ${isCurrent && b > 0 && rest > 0 ? `<div class="meta" style="margin-top:2px"><span>Soit ${eur(rest/daysLeft)} par jour jusqu’à la fin du mois</span></div>` : ''}
+      ${isCurrent && b > 0 && rest > 0 && !env.fixed ? `<div class="meta" style="margin-top:2px"><span>Soit ${eur(rest/daysLeft)} par jour jusqu’à la fin du mois</span></div>` : ''}
     </div>`;
   }
   html += `</div>`;
-  if (spent.autre > 0) html += `<div class="card row"><span class="grow"><b>Autre</b> <span class="muted small">(hors enveloppes)</span></span><span class="amount">${eur(spent.autre)}</span></div>`;
+  html += `<div class="card row tap" data-action="quickExp" data-cat="autre" role="button" tabindex="0" style="cursor:pointer"><span class="grow"><b>Autre</b> <span class="muted small">(hors enveloppes)</span></span><span class="amount">${eur(spent.autre)}</span></div>`;
 
   html += goalChart(ym);
   html += historyTable();
@@ -779,18 +855,19 @@ function render(){
   const tab = TABS.find(t => t.id === ui.tab) || TABS[0];
   document.getElementById('tabs').innerHTML = TABS.map(t => `<a href="#${t.id}" aria-current="${t.id===tab.id?'page':'false'}">${I[t.icon]}<span>${t.label}</span></a>`).join('');
   document.getElementById('settingsBtn').innerHTML = I.gear;
-  document.getElementById('pageTitle').textContent = tab.label;
-  const sub = {aujourdhui: fmtDay(todayStr()), agenda:'Tes rendez-vous et rappels', depenses:'Ton reste à vivre', courses:'Catalogue et liste', idees:'Tout ce qui te passe par la tête'}[tab.id];
+  const hr = new Date().getHours();
+  document.getElementById('pageTitle').textContent = tab.id === 'accueil' ? (hr < 5 ? 'Bonne nuit' : hr < 18 ? 'Bonjour' : 'Bonsoir') : tab.label;
+  const sub = {accueil: fmtDay(todayStr()), aujourdhui: fmtDay(todayStr()), agenda:'Tes rendez-vous et rappels', depenses:'Ton reste à vivre', courses:'Catalogue et liste', idees:'Tout ce qui te passe par la tête'}[tab.id];
   document.getElementById('pageSub').textContent = sub.charAt(0).toUpperCase() + sub.slice(1);
   const active = document.activeElement;
   const keep = active && active.id ? {id:active.id, start:active.selectionStart, end:active.selectionEnd} : null;
-  const html = tab.id==='aujourdhui' ? viewToday() : tab.id==='agenda' ? viewAgenda() : tab.id==='depenses' ? viewExpenses() : tab.id==='courses' ? viewShop() : viewIdeas();
+  const html = tab.id==='accueil' ? viewHome() : tab.id==='aujourdhui' ? viewToday() : tab.id==='agenda' ? viewAgenda() : tab.id==='depenses' ? viewExpenses() : tab.id==='courses' ? viewShop() : viewIdeas();
   main.innerHTML = `<div class="view">${html}</div>`;
   if (keep) { const el = document.getElementById(keep.id); if (el && main.contains(el)) { el.focus(); try { el.setSelectionRange(keep.start, keep.end); } catch(e){} } }
 }
 function route(){
   const h = location.hash.replace('#','');
-  ui.tab = TABS.some(t => t.id === h) ? h : 'aujourdhui';
+  ui.tab = TABS.some(t => t.id === h) ? h : 'accueil';
   main.scrollTop = 0;
   render();
 }
@@ -812,6 +889,31 @@ function toast(msg, actionLabel, onAction){
 /* ---------- actions ---------- */
 const actions = {
   settings: settingsSheet,
+  quickExp: el => {
+    const env = ENVS.find(e => e.id === el.dataset.cat); if (!env) return;
+    openSheet(`<form data-form="quickExp" data-cat="${env.id}" style="display:flex;flex-direction:column;gap:14px">
+      <h2>${esc(env.name)}</h2>
+      <div class="field"><label for="qAmount">Montant (€)</label><input class="input big-input" id="qAmount" name="amount" inputmode="decimal" placeholder="0,00" autocomplete="off" required></div>
+      <div class="field"><label for="qLabel">Pour quoi ? (facultatif)</label><input class="input" id="qLabel" name="label" placeholder="${esc(env.name)}" autocomplete="off"></div>
+      <div class="grid2"><button type="button" class="btn ghost" data-action="closeSheet">Annuler</button><button class="btn" type="submit">Ajouter</button></div>
+    </form>`);
+    document.getElementById('qAmount')?.focus();
+  },
+  reconcile: () => {
+    const ym = ui.month; const doc = get('exp-'+ym);
+    const {items, targets} = monthStats(ym);
+    const base = (targets.salary || 0) - items.reduce((a,i) => a + i.amount, 0);
+    const cur = base + (Number(doc.adjust) || 0);
+    openSheet(`<form data-form="reconcile" style="display:flex;flex-direction:column;gap:14px">
+      <h2>Comparer avec mon compte</h2>
+      <div class="muted small">L\u2019appli calcule <b>${eur(cur)}</b>. Si ton compte bancaire affiche autre chose (argent du mois d\u2019avant, dépense oubliée…), entre le vrai montant : l\u2019appli s\u2019aligne dessus.</div>
+      <div class="field"><label for="bank">Montant sur mon compte aujourd\u2019hui (€)</label><input class="input big-input" id="bank" name="bank" inputmode="decimal" placeholder="${String(Math.round(cur*100)/100).replace('.',',')}" autocomplete="off" required></div>
+      ${doc.adjust ? `<button type="button" class="btn ghost small" data-action="resetAdjust">Retirer la correction (${eur(doc.adjust)})</button>` : ''}
+      <div class="grid2"><button type="button" class="btn ghost" data-action="closeSheet">Annuler</button><button class="btn" type="submit">Aligner</button></div>
+    </form>`);
+    document.getElementById('bank')?.focus();
+  },
+  resetAdjust: () => { const doc = get('exp-'+ui.month); delete doc.adjust; save('exp-'+ui.month); closeSheet(); render(); toast('Correction retirée'); },
   mode: el => { const id = el.dataset.id; document.getElementById('m-'+id).value = el.dataset.val; el.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === el)); updateEquivalents(); },
   closeSheet,
   backdrop: (el, ev) => { if (ev.target === el) closeSheet(); },
@@ -865,6 +967,9 @@ document.addEventListener('click', ev => {
   const fn = actions[el.dataset.action];
   if (fn) { if (el.tagName === 'BUTTON' && el.type !== 'submit') ev.preventDefault(); fn(el, ev); }
 });
+document.addEventListener('keydown', ev => {
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('[role=button][data-action]')) { ev.preventDefault(); ev.target.click(); }
+});
 document.addEventListener('input', ev => {
   if (ev.target.closest && ev.target.closest('form[data-form=settings]')) updateEquivalents();
   if (ev.target.id === 'shopSearch') { ui.shopQuery = ev.target.value; render(); }
@@ -879,7 +984,12 @@ document.addEventListener('change', ev => {
     }).catch(() => toast('Ce fichier n’est pas une sauvegarde Mon Quotidien'));
     return;
   }
-  if (ev.target.id === 'dueCustom' && ev.target.value) { ui.newDue = ev.target.value; render(); document.getElementById('taskInput')?.focus(); }
+  if (ev.target.id === 'dueCustom' && ev.target.value) {
+    ui.newDue = ev.target.value;
+    const lab = ev.target.closest('label');
+    document.querySelectorAll('[data-action=setDue]').forEach(b => b.setAttribute('aria-pressed', b.dataset.val === ui.newDue));
+    if (lab) { lab.setAttribute('aria-pressed', 'true'); lab.firstChild.nodeValue = parseDay(ui.newDue).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}); }
+  }
 });
 document.addEventListener('submit', async ev => {
   const f = ev.target; ev.preventDefault();
@@ -938,6 +1048,26 @@ document.addEventListener('submit', async ev => {
       addExpense({amount, cat:p.cat, label:(data.label||'').trim() || 'Dépense', date:todayStr(), text:p.text});
       ui.pendingExpense = null; ui.month = todayStr().slice(0,7); render();
       toast(`${eur(amount)} en ${ENVS.find(e=>e.id===p.cat).name}`);
+      break;
+    }
+    case 'quickExp': {
+      const amount = parseFloat(String(data.amount||'').replace(/\s/g,'').replace(',','.'));
+      if (!(amount > 0)) { toast('Indique un montant'); return; }
+      const cat = f.dataset.cat; const env = ENVS.find(e => e.id === cat);
+      const ref = addExpense({amount, cat, label:(data.label||'').trim() || env.name, date:todayStr(), text:''});
+      ui.month = ref.ym; closeSheet(); render();
+      toast(`${eur(amount)} en ${env.name}`, 'Annuler', () => { const d = get('exp-'+ref.ym); d.items = d.items.filter(i => i.id !== ref.id); save('exp-'+ref.ym); render(); });
+      break;
+    }
+    case 'reconcile': {
+      const bank = parseFloat(String(data.bank||'').replace(/\s/g,'').replace(',','.'));
+      if (isNaN(bank)) { toast('Indique le montant de ton compte'); return; }
+      const ym = ui.month; const doc = get('exp-'+ym);
+      const {items, targets} = monthStats(ym);
+      const base = (targets.salary || 0) - items.reduce((a,i) => a + i.amount, 0);
+      doc.adjust = Math.round((bank - base)*100)/100;
+      if (!doc.adjust) delete doc.adjust;
+      save('exp-'+ym); closeSheet(); render(); toast('Aligné sur ton compte');
       break;
     }
     case 'idea': {
