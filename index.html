@@ -140,6 +140,7 @@ a.link{color:var(--accent);font-weight:700;text-decoration:none}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .sync.on i{background:var(--calm)}
 .idea{white-space:pre-wrap;overflow-wrap:anywhere}
+.sortsel{width:100%;min-height:40px;padding:8px 10px;font-size:15px}
 .home-date{padding:2px 2px 0}
 .hd-day{font-family:var(--display);font-size:40px;font-weight:700;line-height:1.05;text-transform:capitalize;letter-spacing:-.02em}
 .hd-rest{font-size:18px;font-weight:600;color:var(--muted);margin-top:2px}
@@ -305,6 +306,14 @@ const DEFAULT_KEYWORDS = {
   famille:'remboursement, rembourse, famille, maman, papa, mere, pere, parents, frere, soeur, tonton, tata',
   investissement:'investissement, investi, placement, bourse, pea, cto, etf, action, actions, livret, livret a, epargne, crypto, bitcoin, assurance vie, per, scpi'
 };
+const MERCHANTS = {
+  bouffe:'carrefour city, carrefour market, intermarche, super u, hyper u, u express, leclerc, e.leclerc, lidl, aldi, netto, cora, casino, geant, monoprix, monop, franprix, picard, grand frais, biocoop, naturalia, la vie claire, spar, vival, match, colruyt, auchan, simply market, boulangerie, marie blachere, paul',
+  plaisir:'mcdonald, mcdonalds, burger king, kfc, quick, o tacos, subway, starbucks, dominos, pizza hut, five guys, columbus, brioche doree, pathe, cgr, ugc, mega cgr, fnac, cultura, decathlon, zara, h m, primark, kiabi, jules, celio, nike, steam, playstation, xbox, nintendo, uber eats, deliveroo, just eat',
+  essence:'totalenergies, total energies, total access, esso, shell, bp, avia, agip, eni, carrefour energies, intermarche carburant, station u, leclerc carburant, dyneff',
+  necessite:'pharmacie, parapharmacie, sncf, stas, tcl, ratp, blablacar, norauto, feu vert, speedy, midas, point s, la poste',
+  appartement:'ikea, leroy merlin, castorama, brico depot, bricomarche, but, conforama, maisons du monde, action',
+  credit:'', famille:'', investissement:'boursorama, trade republic, binance, coinbase, degiro'
+};
 const RAYONS = {
   'Fruits et légumes':['Bananes','Pommes','Tomates','Salade','Carottes','Pommes de terre','Oignons','Ail','Citrons','Courgettes','Avocats','Concombre'],
   'Boulangerie':['Pain','Pain de mie','Croissants'],
@@ -327,6 +336,7 @@ const DEFAULTS = {
     return {catalog, list:{}, checked:{}};
   }
 };
+DEFAULTS.applepay = () => ({seen:[], pending:[], map:{}});
 const defaultFor = name => name.startsWith('exp-') ? {items:[]} : DEFAULTS[name]();
 
 /* ---------- stockage : sur ce téléphone ---------- */
@@ -535,7 +545,8 @@ function parseExpense(text){
   const m = t.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|e\b|eur\b|euros?\b)?(?:\s*(\d{1,2})\b)?/);
   let amount = null;
   if (m) { amount = parseFloat(m[1].replace(',','.')); if (m[2] && /euros?/.test(t.slice(m.index, m.index + m[0].length)) && !m[1].includes(',') && !m[1].includes('.')) amount += parseInt(m[2],10)/100; }
-  const kw = get('settings').keywords || DEFAULT_KEYWORDS;
+  const kw0 = get('settings').keywords || DEFAULT_KEYWORDS;
+  const kw = {}; ENV_IDS.forEach(e => kw[e] = [kw0[e] ?? DEFAULT_KEYWORDS[e] ?? '', MERCHANTS[e] || ''].filter(Boolean).join(', '));
   let cat = null, hits = 0;
   for (const env of ENV_IDS) {
     const words = String(kw[env] ?? DEFAULT_KEYWORDS[env] ?? '').split(',').map(w => norm(w.trim())).filter(Boolean);
@@ -558,6 +569,77 @@ function addExpense(e){
   save('exp-'+ym);
   return {ym, id:item.id};
 }
+/* ---------- import Apple Pay ---------- */
+function parseAmount(str){
+  let t = String(str||'').replace(/[^\d,.\-]/g,'');
+  if (!t) return NaN;
+  const lc = t.lastIndexOf(','), ld = t.lastIndexOf('.');
+  if (lc > -1 && ld > -1) t = lc > ld ? t.replace(/\./g,'').replace(',','.') : t.replace(/,/g,'');
+  else if (lc > -1) t = /,\d{1,2}$/.test(t) ? t.replace(',','.') : t.replace(/,/g,'');
+  return Math.abs(parseFloat(t));
+}
+function parseLineDate(str){
+  const t = String(str||'').trim();
+  let m = t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = t.match(/(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})/);
+  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(+m[2])}-${pad(+m[1])}`; }
+  const months = ['janv','fevr','mars','avr','mai','juin','juil','aout','sept','oct','nov','dec'];
+  m = norm(t).match(/(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})/);
+  if (m) { const i = months.findIndex(x => m[2].startsWith(x.slice(0,3))); if (i > -1) return `${m[3]}-${pad(i+1)}-${pad(+m[1])}`; }
+  return null;
+}
+function merchantKey(name){ return norm(name).replace(/[^a-z0-9]+/g,' ').trim(); }
+function guessCat(merchant){
+  const ap = get('applepay');
+  const k = merchantKey(merchant);
+  if (ap.map && ap.map[k]) return ap.map[k];
+  const p = parseExpense(merchant);
+  return p.cat;
+}
+function importApplePay(text){
+  const ap = get('applepay');
+  ap.seen = ap.seen || []; ap.pending = ap.pending || []; ap.map = ap.map || {};
+  const seen = new Set(ap.seen);
+  let added = 0, toSort = 0, skipped = 0;
+  const touched = new Set();
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (seen.has(line)) { skipped++; continue; }
+    const parts = line.split(/\s*[|;]\s*/);
+    if (parts.length < 2) continue;
+    let date = null, amount = NaN, merchant = '';
+    if (parts.length >= 3) { date = parseLineDate(parts[0]); amount = parseAmount(parts[1]); merchant = parts.slice(2).join(' ').trim(); }
+    else { amount = parseAmount(parts[0]); merchant = parts[1].trim(); }
+    if (!(amount > 0)) continue;
+    date = date || todayStr();
+    merchant = merchant || 'Apple Pay';
+    seen.add(line); ap.seen.push(line);
+    const cat = guessCat(merchant);
+    if (cat) { const ref = addExpense({amount, cat, label:merchant, date, text:'Apple Pay'}); touched.add(ref.ym); added++; }
+    else { ap.pending.push({id:uid(), amount, label:merchant, date}); toSort++; }
+  }
+  if (ap.seen.length > 3000) ap.seen = ap.seen.slice(-3000);
+  save('applepay');
+  return {added, toSort, skipped};
+}
+function pendingBlock(){
+  const ap = get('applepay');
+  if (!ap.pending || !ap.pending.length) return '';
+  const opts = ENVS.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  return `<div class="card" style="border-color:var(--mod)">
+    <div class="section-title">Apple Pay · à trier (${ap.pending.length})</div>
+    <div class="list">${ap.pending.map(x => `<div class="item" style="flex-wrap:wrap">
+      <div class="grow" style="min-width:140px"><div class="title">${esc(x.label)}</div><div class="muted small">${esc(parseDay(x.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}))}</div></div>
+      <span class="amount">${eur(x.amount)}</span>
+      <div class="row" style="width:100%"><select class="input sortsel grow" data-sort="${x.id}" aria-label="Enveloppe pour ${esc(x.label)}"><option value="">Choisir l’enveloppe…</option>${opts}</select>
+      <button class="del" data-action="dropPending" data-id="${x.id}" aria-label="Ignorer">${I.x}</button></div>
+    </div>`).join('')}</div>
+    <div class="muted small" style="margin-top:8px">L’appli retient ton choix : la prochaine fois, ce commerce sera rangé tout seul.</div>
+  </div>`;
+}
+
 function monthStats(ym){
   const items = get('exp-'+ym).items;
   const spent = Object.fromEntries(ENVS.map(e => [e.id, 0]));
@@ -642,6 +724,8 @@ function viewExpenses(){
   } else {
     html += `<div class="hero st-warn"><div class="hero-label">Il te reste</div><div class="muted small">Indique ton salaire dans les réglages pour voir ici l\u2019argent qu\u2019il te reste ce mois-ci.</div><button class="btn small" data-action="settings" style="align-self:flex-start;margin-top:10px">Indiquer mon salaire</button></div>`;
   }
+  html += pendingBlock();
+  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><input type="file" id="apFile" accept=".txt,text/plain" hidden>`;
   html += `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
     <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 450 loyer" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
     <div class="hint">${I.mic}<span>${SR ? 'Touche le micro et dis ta dépense, par exemple « 25 euros resto ». Elle s’enregistre toute seule.' : 'Pour parler : touche le champ puis le micro du clavier, et dis ta dépense.'}</span></div>
@@ -951,6 +1035,8 @@ const actions = {
   clearList: () => { const s = get('shop'); const old = {list:{...s.list}, checked:{...s.checked}}; s.list = {}; s.checked = {}; save('shop'); closeSheet(); render(); toast('Liste vidée', 'Annuler', () => { s.list = old.list; s.checked = old.checked; save('shop'); render(); }); },
   mic: el => startMic(el.dataset.target, el.dataset.submit === '1'),
   exportData: () => { downloadFile(`mon-quotidien-sauvegarde-${todayStr()}.json`, JSON.stringify(allData()), 'application/json'); toast('Sauvegarde créée : range-la dans Fichiers ou envoie-la-toi'); },
+  importApplePay: () => document.getElementById('apFile')?.click(),
+  dropPending: el => { const ap = get('applepay'); const i = ap.pending.findIndex(x => x.id === el.dataset.id); if (i < 0) return; const [old] = ap.pending.splice(i,1); save('applepay'); render(); toast('Dépense ignorée', 'Annuler', () => { ap.pending.splice(i,0,old); save('applepay'); render(); }); },
   importData: () => document.getElementById('importFile')?.click(),
   pinIdea: el => { const i = get('ideas').items.find(x => x.id === el.dataset.id); if (!i) return; i.pinned = !i.pinned; save('ideas'); render(); },
   delIdea: el => { const d = get('ideas'); const i = d.items.findIndex(x => x.id === el.dataset.id); if (i < 0) return; const [old] = d.items.splice(i,1); save('ideas'); render(); toast('Idée supprimée', 'Annuler', () => { d.items.splice(i,0,old); save('ideas'); render(); }); }
@@ -975,6 +1061,25 @@ document.addEventListener('input', ev => {
   if (ev.target.id === 'shopSearch') { ui.shopQuery = ev.target.value; render(); }
 });
 document.addEventListener('change', ev => {
+  if (ev.target.id === 'apFile' && ev.target.files[0]) {
+    ev.target.files[0].text().then(txt => {
+      const r = importApplePay(txt); ev.target.value = '';
+      ui.month = todayStr().slice(0,7); render();
+      if (!r.added && !r.toSort) toast(r.skipped ? 'Rien de nouveau : tout était déjà importé' : 'Aucune dépense trouvée dans ce fichier');
+      else toast(`${r.added} dépense${r.added>1?'s':''} ajoutée${r.added>1?'s':''}${r.toSort ? ` · ${r.toSort} à trier` : ''}`);
+    }).catch(() => toast('Impossible de lire ce fichier'));
+    return;
+  }
+  if (ev.target.dataset && ev.target.dataset.sort && ev.target.value) {
+    const ap = get('applepay'); const x = ap.pending.find(p => p.id === ev.target.dataset.sort); if (!x) return;
+    const cat = ev.target.value;
+    ap.pending = ap.pending.filter(p => p.id !== x.id);
+    ap.map[merchantKey(x.label)] = cat;
+    save('applepay');
+    addExpense({amount:x.amount, cat, label:x.label, date:x.date, text:'Apple Pay'});
+    render(); toast(`${eur(x.amount)} en ${ENVS.find(e => e.id === cat).name}`);
+    return;
+  }
   if (ev.target.id === 'importFile' && ev.target.files[0]) {
     ev.target.files[0].text().then(txt => {
       const d = JSON.parse(txt);
