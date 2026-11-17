@@ -233,7 +233,7 @@ table.hist th:first-child{text-align:left}
 <div id="toastHost"></div>
 
 <script>
-const APP_VERSION = 'v4 · 17 nov. 2026';
+const APP_VERSION = 'v5 · 17 nov. 2026';
 /* ---------- icônes ---------- */
 const I = {
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
@@ -607,7 +607,7 @@ const DATE_START = /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}|\d{1,2}(?
 function splitEntries(text){
   // une ligne par paiement ; si « Créer une ligne » était désactivé, on recoupe avant chaque date
   const out = [];
-  for (const raw of String(text).replace(/﻿/g,'').split(/\r?\n|\r/)) {
+  for (const raw of String(text).replace(/\uFEFF/g,'').split(/\r?\n|\r/)) {
     const line = raw.trim(); if (!line) continue;
     const starts = []; let m; DATE_START.lastIndex = 0;
     while ((m = DATE_START.exec(line))) { starts.push(m.index); if (m[0].length === 0) DATE_START.lastIndex++; }
@@ -662,38 +662,41 @@ function extractAmount(line){
   cands.sort((x,y) => y.score - x.score);
   return {amount:cands[0].v, rest:String(line).replace(cands[0].txt.trim(), ' ')};
 }
-function importApplePay(text){
+function importApplePay(text, force){
   const ap = get('applepay');
   ap.seen = ap.seen || []; ap.pending = ap.pending || []; ap.map = ap.map || {};
+  const lines = String(text).replace(/\uFEFF/g,'').split(/\r\n|\n|\r|\u2028|\u2029/).map(l => l.trim()).filter(Boolean);
+  if (force) { const set = new Set(lines); ap.seen = ap.seen.filter(l => !set.has(l)); }
   const seen = new Set(ap.seen);
   let added = 0, skipped = 0, noAmount = 0;
-  const entries = splitEntries(text);
-  for (const line of entries) {
+  for (const line of lines) {
     if (seen.has(line)) { skipped++; continue; }
-    const date = parseLineDate(line) || todayStr();
-    const {amount, rest} = extractAmount(line);
-    let note = rest.replace(DATE_START, ' ').replace(/\b(à|at)\s+\d{1,2}[:h]\d{2}(\s*[ap]\.?m\.?)?/gi, ' ').replace(/\b\d{1,2}[:h]\d{2}\b/g,' ').replace(/[|;\t]+/g,' ').replace(/\s{2,}/g,' ').trim();
-    note = note.replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/gi,' ').replace(/^\s*(à|a|at|le)\s+/i,'').replace(/\s+(à|a|at)\s*$/i,'').replace(/\s{2,}/g,' ').trim();
-    if (!note) note = 'Apple Pay';
+    const {amount} = extractAmount(line);
     if (amount == null) noAmount++;
     seen.add(line); ap.seen.push(line);
-    ap.pending.push({id:uid(), amount, label:note, date, raw:line});
+    ap.pending.push({id:uid(), amount, label:line, date: parseLineDate(line) || todayStr(), raw:line});
     added++;
   }
-  if (ap.seen.length > 3000) ap.seen = ap.seen.slice(-3000);
+  if (ap.seen.length > 5000) ap.seen = ap.seen.slice(-5000);
   save('applepay');
-  return {added, skipped, noAmount, total: entries.length, chars: String(text).length, sample: entries.slice(-3)};
+  return {added, skipped, noAmount, total: lines.length, chars: String(text).length, sample: lines.slice(-3)};
+}
+function runImport(txt, force){
+  const r = importApplePay(txt, force);
+  ui.month = todayStr().slice(0,7); closeSheet(); render(); importReport(r);
 }
 function importReport(r){
-  const rows = arr => arr.map(l => `<div class="started" style="font-size:13px;margin-top:6px">${esc(l.length > 160 ? l.slice(0,160) + '…' : l)}</div>`).join('');
-  openSheet(`<h2>Import Apple Pay</h2>
+  const rows = arr => arr.map(l => `<div class="started" style="font-size:13px;margin-top:6px">${esc(l.length > 200 ? l.slice(0,200) + '…' : l)}</div>`).join('');
+  openSheet(`<h2>Import terminé</h2>
     <div class="card" style="display:flex;flex-direction:column;gap:6px">
       <div class="row"><span class="grow">Lignes dans le fichier</span><b>${r.total}</b></div>
-      <div class="row"><span class="grow">Nouvelles, ajoutées à trier</span><b>${r.added}</b></div>
-      <div class="row"><span class="grow">Déjà importées avant</span><b>${r.skipped}</b></div>
+      <div class="row"><span class="grow">Dépenses créées dans « À trier »</span><b>${r.added}</b></div>
+      <div class="row"><span class="grow">Déjà importées avant (ignorées)</span><b>${r.skipped}</b></div>
+      ${r.noAmount ? `<div class="row"><span class="grow">Sans montant lisible (à compléter)</span><b>${r.noAmount}</b></div>` : ''}
     </div>
-    ${r.total === 0 ? `<div class="muted small">Le fichier choisi est vide. Vérifie que c’est bien applepay.txt et qu’un paiement Apple Pay a eu lieu depuis la création de l’automatisation.</div>` : ''}
-    ${r.total && !r.added ? `<div><b>Dernières lignes du fichier</b><div class="muted small">Elles ont toutes déjà été importées.</div>${rows(r.sample)}</div>` : ''}
+    ${r.total === 0 ? `<div class="muted small">Le fichier est vide (${r.chars} caractères).</div>` : ''}
+    ${r.skipped ? `<button class="btn ghost" data-action="forceImport">Réimporter aussi les ${r.skipped} lignes déjà importées</button><div class="muted small">À utiliser si des dépenses ont disparu de « À trier » sans avoir été classées. Attention : celles déjà classées seraient en double.</div>` : ''}
+    ${r.total ? `<div><b>Dernières lignes lues</b>${rows(r.sample)}</div>` : ''}
     <button class="btn" data-action="closeSheet">OK</button>`);
 }
 
@@ -705,7 +708,7 @@ function pendingBlock(){
   return `<div class="card" style="border-color:var(--mod)">
     <div class="section-title">Apple Pay · à trier (${ap.pending.length}) <button class="link small" data-action="clearPending" style="border:0;background:none;text-transform:none;letter-spacing:0">Tout ignorer</button></div>
     <div class="list">${list.map(x => `<div class="item" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div class="row" style="align-items:flex-start"><div class="grow"><div class="title">${esc(x.label)}</div><div class="muted small">${esc(parseDay(x.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}))}</div></div>
+      <div class="row" style="align-items:flex-start"><div class="grow"><div class="title" style="font-weight:600;font-size:15px">${esc(x.label)}</div><div class="muted small">${esc(parseDay(x.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}))}</div></div>
         <button class="del" data-action="dropPending" data-id="${x.id}" aria-label="Ignorer">${I.x}</button></div>
       <div class="row"><input class="input pamount" id="pa-${x.id}" inputmode="decimal" value="${x.amount != null ? x.amount.toFixed(2).replace('.',',') : ''}" placeholder="Montant" style="width:110px;flex:none;min-height:40px;padding:8px 10px" aria-label="Montant">
         <select class="input sortsel grow" data-sort="${x.id}" aria-label="Enveloppe"><option value="">Choisir l’enveloppe…</option>${opts}</select></div>
@@ -798,7 +801,7 @@ function viewExpenses(){
     html += `<div class="hero st-warn"><div class="hero-label">Il te reste</div><div class="muted small">Indique ton salaire dans les réglages pour voir ici l\u2019argent qu\u2019il te reste ce mois-ci.</div><button class="btn small" data-action="settings" style="align-self:flex-start;margin-top:10px">Indiquer mon salaire</button></div>`;
   }
   html += pendingBlock();
-  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><div class="muted small" style="text-align:center;margin-top:-6px">Appli ${APP_VERSION}</div><input type="file" id="apFile" accept=".txt,text/plain,public.plain-text,public.text" hidden>`;
+  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button><button class="btn ghost" data-action="pasteLines">Coller</button></div><div class="muted small" style="text-align:center;margin-top:-6px">Appli ${APP_VERSION}</div><input type="file" id="apFile" accept=".txt,text/plain,public.plain-text,public.text" hidden>`;
   html += `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
     <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 450 loyer" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
     <div class="hint">${I.mic}<span>${SR ? 'Touche le micro et dis ta dépense, par exemple « 25 euros resto ». Elle s’enregistre toute seule.' : 'Pour parler : touche le champ puis le micro du clavier, et dis ta dépense.'}</span></div>
@@ -1111,6 +1114,13 @@ const actions = {
   exportData: () => { downloadFile(`mon-quotidien-sauvegarde-${todayStr()}.json`, JSON.stringify(allData()), 'application/json'); toast('Sauvegarde créée : range-la dans Fichiers ou envoie-la-toi'); },
   importApplePay: () => { const f = document.getElementById('apFile'); if (!f) return; f.value = ''; f.click(); },
   copyBad: async () => { try { await navigator.clipboard.writeText((ui.lastBad||[]).join('\n')); toast('Lignes copiées'); } catch(e) { toast('Copie refusée'); } },
+  forceImport: () => { if (ui.lastImport) runImport(ui.lastImport, true); },
+  pasteLines: () => openSheet(`<form data-form="pasteImport" style="display:flex;flex-direction:column;gap:12px">
+      <h2>Coller les lignes</h2>
+      <div class="muted small">Ouvre applepay.txt dans l’app Fichiers, sélectionne tout le texte, copie-le, puis colle-le ici.</div>
+      <textarea class="input" id="pasteBox" name="text" style="min-height:180px" placeholder="Colle ici…"></textarea>
+      <div class="grid2"><button type="button" class="btn ghost" data-action="closeSheet">Annuler</button><button class="btn" type="submit">Importer</button></div>
+    </form>`),
   clearPending: () => { const ap = get('applepay'); const old = ap.pending.slice(); ap.pending = []; save('applepay'); render(); toast('Liste à trier vidée', 'Annuler', () => { ap.pending = old; save('applepay'); render(); }); },
   dropPending: el => { const ap = get('applepay'); const i = ap.pending.findIndex(x => x.id === el.dataset.id); if (i < 0) return; const [old] = ap.pending.splice(i,1); save('applepay'); render(); toast('Dépense ignorée', 'Annuler', () => { ap.pending.splice(i,0,old); save('applepay'); render(); }); },
   importData: () => document.getElementById('importFile')?.click(),
@@ -1139,12 +1149,8 @@ document.addEventListener('input', ev => {
 document.addEventListener('change', ev => {
   if (ev.target.id === 'apFile' && ev.target.files[0]) {
     const input = ev.target, file = input.files[0];
-    file.text().then(txt => {
-      const r = importApplePay(txt);
-      ui.month = todayStr().slice(0,7); render();
-      if (r.added) toast(`${r.added} paiement${r.added>1?'s':''} à trier${r.noAmount ? ` (dont ${r.noAmount} sans montant à compléter)` : ''}`);
-      else importReport(r);
-    }).catch(() => toast('Impossible de lire ce fichier. Réessaie après l’avoir ouvert une fois dans l’app Fichiers.'))
+    file.text().then(txt => { ui.lastImport = txt; runImport(txt, false); })
+      .catch(() => toast('Impossible de lire ce fichier. Essaie « Coller les lignes ».'))
       .finally(() => { try { input.value = ''; } catch(e){} });
     return;
   }
@@ -1255,6 +1261,10 @@ document.addEventListener('submit', async ev => {
       if (!doc.adjust) delete doc.adjust;
       save('exp-'+ym); closeSheet(); render(); toast('Aligné sur ton compte');
       break;
+    }
+    case 'pasteImport': {
+      const txt = data.text || ''; if (!txt.trim()) { toast('Colle d’abord les lignes'); return; }
+      ui.lastImport = txt; runImport(txt, false); break;
     }
     case 'idea': {
       const text = (data.text||'').trim(); if (!text) return;
