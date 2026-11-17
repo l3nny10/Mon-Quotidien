@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -230,6 +233,7 @@ table.hist th:first-child{text-align:left}
 <div id="toastHost"></div>
 
 <script>
+const APP_VERSION = 'v4 · 17 nov. 2026';
 /* ---------- icônes ---------- */
 const I = {
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
@@ -794,7 +798,7 @@ function viewExpenses(){
     html += `<div class="hero st-warn"><div class="hero-label">Il te reste</div><div class="muted small">Indique ton salaire dans les réglages pour voir ici l\u2019argent qu\u2019il te reste ce mois-ci.</div><button class="btn small" data-action="settings" style="align-self:flex-start;margin-top:10px">Indiquer mon salaire</button></div>`;
   }
   html += pendingBlock();
-  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><input type="file" id="apFile" accept=".txt,text/plain,public.plain-text,public.text" hidden>`;
+  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><div class="muted small" style="text-align:center;margin-top:-6px">Appli ${APP_VERSION}</div><input type="file" id="apFile" accept=".txt,text/plain,public.plain-text,public.text" hidden>`;
   html += `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
     <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 450 loyer" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
     <div class="hint">${I.mic}<span>${SR ? 'Touche le micro et dis ta dépense, par exemple « 25 euros resto ». Elle s’enregistre toute seule.' : 'Pour parler : touche le champ puis le micro du clavier, et dis ta dépense.'}</span></div>
@@ -980,6 +984,7 @@ function settingsSheet(){
     <div class="muted small">Tes données restent sur ce téléphone, dans l’appli de l’écran d’accueil. Exporte une sauvegarde de temps en temps pour ne rien perdre si tu changes de téléphone.</div>
     <div class="grid2"><button type="button" class="btn ghost" data-action="exportData">Exporter</button><button type="button" class="btn ghost" data-action="importData">Importer</button></div>
     <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <div class="muted small" style="text-align:center">Version ${APP_VERSION}</div>
     <div class="grid2"><button type="button" class="btn ghost" data-action="closeSheet">Annuler</button><button class="btn" type="submit">Enregistrer</button></div>
   </form>`);
   updateEquivalents();
