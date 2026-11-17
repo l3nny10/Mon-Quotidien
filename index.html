@@ -578,16 +578,58 @@ function parseAmount(str){
   else if (lc > -1) t = /,\d{1,2}$/.test(t) ? t.replace(',','.') : t.replace(/,/g,'');
   return Math.abs(parseFloat(t));
 }
+const FR_MONTHS = ['janv','fevr','mars','avr','mai','juin','juil','aout','sept','oct','nov','dec'];
+const EN_MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function monthIdx(word){
+  const w = norm(word).replace(/\./g,'');
+  let i = FR_MONTHS.findIndex(k => w.startsWith(k)); if (i > -1) return i;
+  if (w.startsWith('fev')) return 1;
+  if (w.startsWith('dec')) return 11;
+  i = EN_MONTHS.findIndex(k => w.startsWith(k)); return i;
+}
 function parseLineDate(str){
-  const t = String(str||'').trim();
+  const t = norm(String(str||'').trim());
   let m = t.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
   m = t.match(/(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})/);
   if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(+m[2])}-${pad(+m[1])}`; }
-  const months = ['janv','fevr','mars','avr','mai','juin','juil','aout','sept','oct','nov','dec'];
-  m = norm(t).match(/(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})/);
-  if (m) { const i = months.findIndex(x => m[2].startsWith(x.slice(0,3))); if (i > -1) return `${m[3]}-${pad(i+1)}-${pad(+m[1])}`; }
+  m = t.match(/(\d{1,2})(?:er)?\s+([a-z]+)\.?\s+(\d{4})/);
+  if (m) { const i = monthIdx(m[2]); if (i > -1) return `${m[3]}-${pad(i+1)}-${pad(+m[1])}`; }
+  m = t.match(/([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})/);
+  if (m) { const i = monthIdx(m[1]); if (i > -1) return `${m[3]}-${pad(i+1)}-${pad(+m[2])}`; }
   return null;
+}
+const DATE_START = /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}|\d{1,2}(?:er)?\s+(?:janv|févr|fevr|mars|avr|mai|juin|juil|août|aout|sept|oct|nov|déc|dec)[a-zéû]*\.?\s+\d{4})/gi;
+function splitEntries(text){
+  // une ligne par paiement ; si « Créer une ligne » était désactivé, on recoupe avant chaque date
+  const out = [];
+  for (const raw of String(text).replace(/﻿/g,'').split(/\r?\n|\r/)) {
+    const line = raw.trim(); if (!line) continue;
+    const starts = []; let m; DATE_START.lastIndex = 0;
+    while ((m = DATE_START.exec(line))) { starts.push(m.index); if (m[0].length === 0) DATE_START.lastIndex++; }
+    if (starts.length <= 1) { out.push(line); continue; }
+    if (starts[0] !== 0) starts.unshift(0);
+    for (let i = 0; i < starts.length; i++) { const part = line.slice(starts[i], starts[i+1]).trim(); if (part) out.push(part); }
+  }
+  return out;
+}
+function parseEntry(line){
+  let parts = line.split(/\s*[|;\t]\s*/).filter(x => x !== '');
+  let date = null, amount = NaN, merchant = '';
+  if (parts.length >= 3) { date = parseLineDate(parts[0]); amount = parseAmount(parts[1]); merchant = parts.slice(2).join(' ').trim();
+    if (!(amount > 0)) { const ai = parts.findIndex(x => /\d/.test(x) && /€|eur|\d[,.]\d{2}\b/i.test(x)); if (ai > -1) { amount = parseAmount(parts[ai]); merchant = parts.filter((x,i) => i !== ai && !parseLineDate(x)).join(' ').trim(); date = date || parts.map(parseLineDate).find(Boolean) || null; } } }
+  else if (parts.length === 2) {
+    const looksAmount = x => !parseLineDate(x) && (/€|eur/i.test(x) || /^\s*-?\d[\d\s.\u202f\u00a0]*([,.]\d{1,2})?\s*$/.test(x));
+    const ai = looksAmount(parts[1]) ? 1 : looksAmount(parts[0]) ? 0 : -1;
+    if (ai > -1) { amount = parseAmount(parts[ai]); const other = parts[1-ai].trim(); if (parseLineDate(other)) date = parseLineDate(other); else merchant = other; }
+  }
+  else {
+    date = parseLineDate(line);
+    const am = line.match(/(\d[\d\s.  ]*[,.]\d{2})\s*(?:€|eur)|(?:€|eur)\s*(\d[\d\s.  ]*[,.]?\d{0,2})/i);
+    if (am) { amount = parseAmount(am[1] || am[2]); merchant = line.replace(am[0],'').replace(DATE_START,'').replace(/\bà\s+\d{1,2}[:h]\d{2}\b/,'').replace(/\s+/g,' ').trim(); }
+  }
+  merchant = merchant.replace(/^à\s+\d{1,2}[:h]\d{2}\s*/,'').trim();
+  return {date, amount, merchant};
 }
 function merchantKey(name){ return norm(name).replace(/[^a-z0-9]+/g,' ').trim(); }
 function guessCat(merchant){
@@ -602,28 +644,39 @@ function importApplePay(text){
   ap.seen = ap.seen || []; ap.pending = ap.pending || []; ap.map = ap.map || {};
   const seen = new Set(ap.seen);
   let added = 0, toSort = 0, skipped = 0;
-  const touched = new Set();
-  for (const raw of String(text).split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
+  const bad = [], entries = splitEntries(text);
+  for (const line of entries) {
     if (seen.has(line)) { skipped++; continue; }
-    const parts = line.split(/\s*[|;]\s*/);
-    if (parts.length < 2) continue;
-    let date = null, amount = NaN, merchant = '';
-    if (parts.length >= 3) { date = parseLineDate(parts[0]); amount = parseAmount(parts[1]); merchant = parts.slice(2).join(' ').trim(); }
-    else { amount = parseAmount(parts[0]); merchant = parts[1].trim(); }
-    if (!(amount > 0)) continue;
-    date = date || todayStr();
-    merchant = merchant || 'Apple Pay';
+    const e = parseEntry(line);
+    if (!(e.amount > 0)) { bad.push(line); continue; }
+    const date = e.date || todayStr();
+    const merchant = e.merchant || 'Apple Pay';
     seen.add(line); ap.seen.push(line);
     const cat = guessCat(merchant);
-    if (cat) { const ref = addExpense({amount, cat, label:merchant, date, text:'Apple Pay'}); touched.add(ref.ym); added++; }
-    else { ap.pending.push({id:uid(), amount, label:merchant, date}); toSort++; }
+    if (cat) { addExpense({amount:e.amount, cat, label:merchant, date, text:'Apple Pay'}); added++; }
+    else { ap.pending.push({id:uid(), amount:e.amount, label:merchant, date}); toSort++; }
   }
   if (ap.seen.length > 3000) ap.seen = ap.seen.slice(-3000);
   save('applepay');
-  return {added, toSort, skipped};
+  return {added, toSort, skipped, bad, total: entries.length, chars: String(text).length, sample: entries.slice(-3)};
 }
+function importReport(r){
+  const rows = (arr) => arr.map(l => `<div class="started" style="font-size:13px;margin-top:6px">${esc(l.length > 160 ? l.slice(0,160) + '…' : l)}</div>`).join('');
+  openSheet(`<h2>Import Apple Pay</h2>
+    <div class="card" style="display:flex;flex-direction:column;gap:6px">
+      <div class="row"><span class="grow">Lignes lues dans le fichier</span><b>${r.total}</b></div>
+      <div class="row"><span class="grow">Dépenses ajoutées</span><b>${r.added}</b></div>
+      <div class="row"><span class="grow">À trier</span><b>${r.toSort}</b></div>
+      <div class="row"><span class="grow">Déjà importées avant</span><b>${r.skipped}</b></div>
+      <div class="row"><span class="grow">Non comprises</span><b style="color:${r.bad.length ? 'var(--crit)' : 'inherit'}">${r.bad.length}</b></div>
+    </div>
+    ${r.total === 0 ? `<div class="muted small">Le fichier choisi est vide (${r.chars} caractères). Vérifie que c’est bien applepay.txt et qu’un paiement Apple Pay a eu lieu depuis la création de l’automatisation.</div>` : ''}
+    ${r.bad.length ? `<div><b>Lignes non comprises</b><div class="muted small">Envoie-les à Claude pour qu’il adapte l’import.</div>${rows(r.bad.slice(0,5))}</div><button class="btn ghost small" data-action="copyBad">Copier ces lignes</button>` : ''}
+    ${!r.bad.length && r.total ? `<div><b>Dernières lignes du fichier</b>${rows(r.sample)}</div>` : ''}
+    <button class="btn" data-action="closeSheet">OK</button>`);
+  ui.lastBad = r.bad;
+}
+
 function pendingBlock(){
   const ap = get('applepay');
   if (!ap.pending || !ap.pending.length) return '';
@@ -725,7 +778,7 @@ function viewExpenses(){
     html += `<div class="hero st-warn"><div class="hero-label">Il te reste</div><div class="muted small">Indique ton salaire dans les réglages pour voir ici l\u2019argent qu\u2019il te reste ce mois-ci.</div><button class="btn small" data-action="settings" style="align-self:flex-start;margin-top:10px">Indiquer mon salaire</button></div>`;
   }
   html += pendingBlock();
-  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><input type="file" id="apFile" accept=".txt,text/plain" hidden>`;
+  html += `<div class="row"><button class="btn ghost grow" data-action="importApplePay">Importer Apple Pay</button></div><input type="file" id="apFile" accept=".txt,text/plain,public.plain-text,public.text" hidden>`;
   html += `<form class="card" data-form="expense" style="display:flex;flex-direction:column;gap:10px">
     <div class="row"><input class="input grow" id="expInput" name="text" placeholder="Ex. : 25 € resto, 450 loyer" autocomplete="off" enterkeyhint="done">${micBtn('expInput', true)}<button class="btn" type="submit">OK</button></div>
     <div class="hint">${I.mic}<span>${SR ? 'Touche le micro et dis ta dépense, par exemple « 25 euros resto ». Elle s’enregistre toute seule.' : 'Pour parler : touche le champ puis le micro du clavier, et dis ta dépense.'}</span></div>
@@ -1035,7 +1088,8 @@ const actions = {
   clearList: () => { const s = get('shop'); const old = {list:{...s.list}, checked:{...s.checked}}; s.list = {}; s.checked = {}; save('shop'); closeSheet(); render(); toast('Liste vidée', 'Annuler', () => { s.list = old.list; s.checked = old.checked; save('shop'); render(); }); },
   mic: el => startMic(el.dataset.target, el.dataset.submit === '1'),
   exportData: () => { downloadFile(`mon-quotidien-sauvegarde-${todayStr()}.json`, JSON.stringify(allData()), 'application/json'); toast('Sauvegarde créée : range-la dans Fichiers ou envoie-la-toi'); },
-  importApplePay: () => document.getElementById('apFile')?.click(),
+  importApplePay: () => { const f = document.getElementById('apFile'); if (!f) return; f.value = ''; f.click(); },
+  copyBad: async () => { try { await navigator.clipboard.writeText((ui.lastBad||[]).join('\n')); toast('Lignes copiées'); } catch(e) { toast('Copie refusée'); } },
   dropPending: el => { const ap = get('applepay'); const i = ap.pending.findIndex(x => x.id === el.dataset.id); if (i < 0) return; const [old] = ap.pending.splice(i,1); save('applepay'); render(); toast('Dépense ignorée', 'Annuler', () => { ap.pending.splice(i,0,old); save('applepay'); render(); }); },
   importData: () => document.getElementById('importFile')?.click(),
   pinIdea: el => { const i = get('ideas').items.find(x => x.id === el.dataset.id); if (!i) return; i.pinned = !i.pinned; save('ideas'); render(); },
@@ -1062,12 +1116,14 @@ document.addEventListener('input', ev => {
 });
 document.addEventListener('change', ev => {
   if (ev.target.id === 'apFile' && ev.target.files[0]) {
-    ev.target.files[0].text().then(txt => {
-      const r = importApplePay(txt); ev.target.value = '';
+    const input = ev.target, file = input.files[0];
+    file.text().then(txt => {
+      const r = importApplePay(txt);
       ui.month = todayStr().slice(0,7); render();
-      if (!r.added && !r.toSort) toast(r.skipped ? 'Rien de nouveau : tout était déjà importé' : 'Aucune dépense trouvée dans ce fichier');
-      else toast(`${r.added} dépense${r.added>1?'s':''} ajoutée${r.added>1?'s':''}${r.toSort ? ` · ${r.toSort} à trier` : ''}`);
-    }).catch(() => toast('Impossible de lire ce fichier'));
+      if ((r.added || r.toSort) && !r.bad.length) toast(`${r.added} dépense${r.added>1?'s':''} ajoutée${r.added>1?'s':''}${r.toSort ? ` · ${r.toSort} à trier` : ''}`);
+      else importReport(r);
+    }).catch(() => toast('Impossible de lire ce fichier. Réessaie après l’avoir ouvert une fois dans l’app Fichiers.'))
+      .finally(() => { try { input.value = ''; } catch(e){} });
     return;
   }
   if (ev.target.dataset && ev.target.dataset.sort && ev.target.value) {
